@@ -1,0 +1,354 @@
+{
+  "name": "Volatile RAG",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "74718e29-7090-4796-aa33-58ccc83dde23",
+      "name": "Chat Trigger",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -432,
+        736
+      ],
+      "webhookId": "76705def-1081-42e4-86d0-701063544b81"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.chatInput }}",
+              "operation": "contains",
+              "value2": "http"
+            }
+          ]
+        }
+      },
+      "id": "7e1f8d86-9ae6-4906-bd75-ee128551f5f6",
+      "name": "Is URL or Question?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        736
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://r.jina.ai/{{ $json.chatInput.match(/(https?:\\/\\/[^\\s]+)/)[0] }}",
+        "options": {}
+      },
+      "id": "13ae4e2c-93fa-4e0e-a960-4e255b03bc57",
+      "name": "Scrape Jina AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        48,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "53c5c250-4846-4a2d-b0d3-f4a134a06f43",
+      "name": "Default Data Loader",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1,
+      "position": [
+        400,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "chunkOverlap": 100,
+        "options": {}
+      },
+      "id": "03d2ed2b-cf2d-4e7b-bbe4-e0ca840cf234",
+      "name": "Recursive Character Text Splitter",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        400,
+        960
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "memoryKey": "={{ $('Chat Trigger').item.json.sessionId }}",
+        "clearStore": true
+      },
+      "id": "33604ddc-1a9e-45bf-82b8-a830533903c7",
+      "name": "Insert into Memory",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1,
+      "position": [
+        256,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "a700f6c9-9145-4e3c-b076-4462efa9a37e",
+      "name": "Embeddings (Insert)",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsHuggingFaceInference",
+      "typeVersion": 1,
+      "position": [
+        256,
+        784
+      ],
+      "credentials": {
+        "huggingFaceApi": {
+          "id": "2ZePrrMnPZzvUY9j",
+          "name": "n8n-embeddings"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  json: {\n    output: \"I've read and memorized that webpage! What would you like to know about it?\"\n  }\n};"
+      },
+      "id": "88b57374-219f-4000-a670-418b5ae19915",
+      "name": "Success Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "You are a precise data-retrieval assistant. You MUST use the search_webpage tool to answer questions. Only use the information returned by the tool. If you do not know the answer, say so."
+        }
+      },
+      "id": "1da3b404-4557-4e98-8ded-2864e8b12e2a",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        -16,
+        1040
+      ]
+    },
+    {
+      "parameters": {
+        "model": "llama-3.1-8b-instant",
+        "options": {}
+      },
+      "id": "3d0f7330-0503-41de-966b-bdd30871220e",
+      "name": "Groq Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -112,
+        1264
+      ],
+      "credentials": {
+        "groqApi": {
+          "id": "0U3P4yVLiL1q3pCc",
+          "name": "Groq account 2"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "4de5d71e-1c7d-43ef-a327-d934c5bc1b61",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1,
+      "position": [
+        48,
+        1280
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolName": "search_webpage",
+        "toolDescription": "Use this tool to search the text of the uploaded webpage. Your input must be a simple, specific search query based on the user's question.",
+        "memoryKey": "={{ $('Chat Trigger').item.json.sessionId }}"
+      },
+      "id": "8f8db2d2-6120-42a4-ab81-a6330d6d9e10",
+      "name": "Search Webpage (Memory)",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1,
+      "position": [
+        192,
+        1280
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "9c9190a8-21bc-4832-9583-fdd5aadfc430",
+      "name": "Embeddings (Retrieve)",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsHuggingFaceInference",
+      "typeVersion": 1,
+      "position": [
+        192,
+        1504
+      ],
+      "credentials": {
+        "huggingFaceApi": {
+          "id": "2ZePrrMnPZzvUY9j",
+          "name": "n8n-embeddings"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "Is URL or Question?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is URL or Question?": {
+      "main": [
+        [
+          {
+            "node": "Scrape Jina AI",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape Jina AI": {
+      "main": [
+        [
+          {
+            "node": "Insert into Memory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert into Memory": {
+      "main": [
+        [
+          {
+            "node": "Success Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Insert into Memory",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recursive Character Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Default Data Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings (Insert)": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Insert into Memory",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Webpage (Memory)": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings (Retrieve)": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Search Webpage (Memory)",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "ad11dfb6-2378-4b34-8ae6-463da3641359",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "219e61b1f9e9ad8227ed7f07d7f7f514500d421625427035c4e290241bd19115"
+  },
+  "id": "ws10MzB5CDvYhsIM",
+  "tags": []
+}
